@@ -15,8 +15,8 @@ import "prismjs/themes/prism.css"; // import syntax highlighting styles
 
 const chartDiv = ref(null); // ECharts instance div view
 const chart = ref(null); // ECharts instance
-const currentStep = ref(-1);
-const totalSteps = ref([]);
+const currentStage = ref("");
+const historyStages = ref([]);
 const currentPage = ref(1);
 const currentProject = computed(() => props.project);
 const configStore = useConfigStore();
@@ -30,7 +30,6 @@ const selectedData = computed(() => {
 });
 
 const selectedTitle = computed(() => {
-  console.log("selectedData", selectedData.value);
   if (!selectedData.value || !selectedData.value["data"]) {
     return "";
   }
@@ -70,10 +69,8 @@ onMounted(async () => {
   }, (configStore.getUpdateInterval() || 1) * 1000);
 
   chart.value.on("selectchanged", "series", (params) => {
-    console.log("selectchanged", params);
     const chartOption = chart.value.getOption();
     const selectedMap = chartOption.series[0].selectedMap;
-    console.log(selectedMap);
     if (params.selected.length > 0) {
       // 使用 dataIndex 查找对应的节点数据
       for (let k in selectedMap) {
@@ -133,11 +130,11 @@ const getToolboxOption = () => {
 const downloadXML = () => {
   try {
     console.log("downloadXML");
-    // 从后端下载XML文件 url = `/api/get_xml_data?project=${currentProject.value}&step=${currentStep.value}`
-    const url = `/api/get_xml_data?project=${currentProject.value}&step=${currentStep.value}`;
+    // 从后端下载XML文件 url = `/api/get_xml_data?project=${currentProject.value}&step=${currentStage.value}`
+    const url = `/api/get_xml_data?project=${currentProject.value}&stage=${currentStage.value}`;
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${currentProject.value}_step_${currentStep.value}.xml`;
+    link.download = `${currentProject.value}__${currentStage.value}.xml`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -150,12 +147,12 @@ const downloadXML = () => {
 const fetchData = async () => {
   if (isPaused.value) {
     // 处于暂停状态下，根据currentPage来请求数据
-    const needFetchStep = totalSteps.value[currentPage.value - 1];
-    if (needFetchStep != currentStep.value) {
-      fetchTree(needFetchStep);
+    const needFetchStage = historyStages.value[currentPage.value - 1];
+    if (needFetchStage != currentStage.value) {
+      fetchTree(needFetchStage);
     }
   } else {
-    fetchTree(-1); // -1表示不指定step，由后端自己决定
+    fetchTree(""); // -1表示不指定step，由后端自己决定
   }
 };
 
@@ -181,22 +178,22 @@ const fetchOption = async () => {
   }
 };
 
-const fetchTree = async (step: number) => {
+const fetchTree = async (stage) => {
   try {
     const response = await fetch(
-      `/api/get_echarts_data?project=${currentProject.value}&step=${step}`
+      `/api/get_echarts_data?project=${currentProject.value}&stage=${stage}`
     );
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }
     const result = await response.json();
-    if (result["step"] == step.value) {
+    if (result["stage"] == currentStage.value) {
       return;
     }
-    currentStep.value = result["step"];
-    totalSteps.value = result["steps"];
+    currentStage.value = result["stage"];
+    historyStages.value = result["history"];
     currentTree.value = result["tree"];
-    currentPage.value = totalSteps.value.indexOf(currentStep.value) + 1;
+    currentPage.value = result["page"];
     chart.value.setOption(
       {
         series: [
@@ -205,8 +202,8 @@ const fetchTree = async (step: number) => {
           },
         ],
         title: {
-          text: currentProject.value,
-          subtext: `step=${result["step"]}, page=${currentPage.value}`,
+          text: result["title"],
+          subtext: result["subtitle"],
         },
       },
       false
@@ -276,7 +273,7 @@ const copySelectedCode = () => {
       :page-size="1"
       :background="false"
       layout="total, prev, pager, next, jumper"
-      :total="totalSteps.length"
+      :total="historyStages.length"
       @current-change="handleCurrentChange"
       class="pagination"
     >
