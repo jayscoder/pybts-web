@@ -1,0 +1,23 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ],
+  "compilerOptions": {
+    // "paths": {
+    //   "@/*": ["src/*"]
+    // },
+    "types": [
+      "@intlify/unplugin-vue-i18n/types",
+      "vite/client",
+      "element-plus/global",
+      "@types/qrcode",
+      "vite-plugin-svg-icons/client"
+    ]
+  }
+}
