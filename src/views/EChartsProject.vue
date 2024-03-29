@@ -93,13 +93,44 @@ onUnmounted(() => {
   }
 });
 
+const getMyTool1Option = () => {
+  return {
+    show: true,
+    title: isPaused.value ? "播放" : "暂停",
+    icon: `image://${isPaused.value ? playIcon : pauseIcon}`,
+    onclick: () => {
+      isPaused.value = !isPaused.value;
+      chart.value.setOption(
+        {
+          toolbox: {
+            feature: {
+              myTool1: getMyTool1Option(),
+            },
+          },
+        },
+        false
+      );
+    },
+  };
+};
+
+const getMyTool2Option = () => {
+  return {
+    show: true,
+    title: "下载XML",
+    icon: `image://${xmlIcon}`,
+    onclick: () => {
+      downloadXML();
+    },
+  };
+};
+
 const getToolboxOption = () => {
   return {
     show: true,
     itemSize: 30,
     itemGap: 16,
     feature: {
-      // dataView: { readOnly: false },
       myTool1: {
         show: true,
         title: isPaused.value ? "播放" : "暂停",
@@ -163,7 +194,9 @@ const fetchOption = async () => {
       throw new Error("Network response was not ok");
     }
     const option = await response.json();
-    option.toolbox = getToolboxOption();
+    option.toolbox.feature.myTool1 = getMyTool1Option();
+    option.toolbox.feature.myTool2 = getMyTool2Option();
+    // option.toolbox = getToolboxOption();
     option.tooltip.formatter = (params) => {
       let code = Prism.highlight(params.value, Prism.languages.yaml, "yaml");
       return "<pre>" + code + "</pre>";
@@ -282,7 +315,7 @@ const copySelectedCode = () => {
       v-model="drawerOpen"
       :title="selectedTitle"
       direction="rtl"
-      size="30%"
+      size="35%"
       @close="onDrawerClose"
     >
       <pre

@@ -48,8 +48,20 @@ onUnmounted(() => {
 
 <template>
   <el-container style="width: 100vw; height: 100vh">
-    <el-aside width="200px">
-      <el-menu :router="true">
+    <el-aside width="200px" style="height: 100%; border-right: 1px solid #ccc">
+      <div
+        style="padding: 10px; border-bottom: 1px solid #ccc; text-align: center"
+      >
+        <h1>
+          <a
+            href="https://github.com/wangtong2015/pybts/"
+            target="_blank"
+            style="text-decoration: none; color: black"
+            >PYBTS</a
+          >
+        </h1>
+      </div>
+      <el-menu :router="true" v-if="menus.length > 0">
         <el-menu-item
           v-for="menu in menus"
           :index="menu.index"
@@ -59,6 +71,10 @@ onUnmounted(() => {
           {{ menu.name }}
         </el-menu-item>
       </el-menu>
+      <div v-else style="padding: 10px; text-align: center">
+        <p>用 PYBTS 来生成行为树运行数据</p>
+        <p>Use PYBTS to generate behavior tree running data</p>
+      </div>
     </el-aside>
     <el-main>
       <router-view> </router-view>
