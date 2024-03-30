@@ -15,8 +15,7 @@ import "prismjs/themes/prism.css"; // import syntax highlighting styles
 
 const chartDiv = ref(null); // ECharts instance div view
 const chart = ref(null); // ECharts instance
-const currentStage = ref("");
-const historyStages = ref([]);
+const totalPages = ref(0);
 const currentPage = ref(1);
 const currentProject = computed(() => props.project);
 const configStore = useConfigStore();
@@ -162,10 +161,10 @@ const downloadXML = () => {
   try {
     console.log("downloadXML");
     // 从后端下载XML文件 url = `/api/get_xml_data?project=${currentProject.value}&step=${currentStage.value}`
-    const url = `/api/get_xml_data?project=${currentProject.value}&stage=${currentStage.value}`;
+    const url = `/api/get_xml_data?project=${currentProject.value}&id=${currentPage.value}`;
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${currentProject.value}__${currentStage.value}.xml`;
+    link.download = `${currentProject.value}__${currentPage.value}.xml`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -178,12 +177,9 @@ const downloadXML = () => {
 const fetchData = async () => {
   if (isPaused.value) {
     // 处于暂停状态下，根据currentPage来请求数据
-    const needFetchStage = historyStages.value[currentPage.value - 1];
-    if (needFetchStage != currentStage.value) {
-      fetchTree(needFetchStage);
-    }
+    fetchTree(currentPage.value);
   } else {
-    fetchTree(""); // -1表示不指定step，由后端自己决定
+    fetchTree(""); // 空表示不指定页数，由后端自己决定
   }
 };
 
@@ -211,22 +207,21 @@ const fetchOption = async () => {
   }
 };
 
-const fetchTree = async (stage) => {
+const fetchTree = async (track_id) => {
   try {
     const response = await fetch(
-      `/api/get_echarts_data?project=${currentProject.value}&stage=${stage}`
+      `/api/get_echarts_data?project=${currentProject.value}&id=${track_id}`
     );
     if (!response.ok) {
       throw new Error("Network response was not ok");
     }
     const result = await response.json();
-    if (result["stage"] == currentStage.value) {
+    totalPages.value = result["total"];
+    currentPage.value = result["page"];
+    if (JSON.stringify(result["tree"]) === JSON.stringify(currentTree.value)) {
       return;
     }
-    currentStage.value = result["stage"];
-    historyStages.value = result["history"];
     currentTree.value = result["tree"];
-    currentPage.value = result["page"];
     chart.value.setOption(
       {
         series: [
@@ -245,12 +240,6 @@ const fetchTree = async (stage) => {
     console.error(e);
     ElMessage.error(e.message);
   }
-};
-
-const handleCurrentChange = (val: number) => {
-  console.log(`current page: ${val}`);
-  currentPage.value = val;
-  fetchData();
 };
 
 // 定义一个函数来递归搜索节点
@@ -296,6 +285,19 @@ const copySelectedCode = () => {
     ElMessage.success("内容已复制");
   }
 };
+
+const handleCurrentChange = (val: number) => {
+  console.log(`current page: ${val}`);
+  isPaused.value = true;
+  chart.value.setOption(
+    {
+      toolbox: getToolboxOption(),
+    },
+    false
+  );
+  currentPage.value = val;
+  fetchData();
+};
 </script>
 <template>
   <div class="container">
@@ -304,9 +306,9 @@ const copySelectedCode = () => {
       v-model:current-page="currentPage"
       :small="false"
       :page-size="1"
-      :background="false"
+      :background="true"
       layout="total, prev, pager, next, jumper"
-      :total="historyStages.length"
+      :total="totalPages"
       @current-change="handleCurrentChange"
       class="pagination"
     >

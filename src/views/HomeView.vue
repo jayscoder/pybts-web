@@ -19,7 +19,7 @@ const fetchConfig = async () => {
   menus.value = configStore.getProjects().map((it, index) => {
     return {
       name: it,
-      index: `/echarts/${it}`,
+      index: `/echarts?project=${it}`,
     };
   });
 };

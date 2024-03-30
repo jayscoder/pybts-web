@@ -11,10 +11,10 @@ const router = createRouter({
       component: HomeView,
       children: [
         {
-          path: "echarts/:project",
+          path: "echarts",
           name: "EChartsProject",
           component: EChartsProject,
-          props: true,
+          props: (route) => ({ project: route.query.project }),
         },
       ],
     },
