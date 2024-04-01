@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import { onMounted, onUnmounted, ref } from "vue";
+import type { Ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useConfigStore } from "@/stores/config";
 
 const route = useRoute();
 const router = useRouter(); // 获取路由实例
-const menus = ref([]);
+const menus: Ref<
+  {
+    name: string;
+    index: string;
+    unread: number;
+    total: number;
+    desc: string;
+  }[]
+> = ref([]);
+
 const configStore = useConfigStore();
 const fetchConfig = async () => {
   await configStore.fetchConfig();
@@ -18,19 +28,27 @@ const fetchConfig = async () => {
 
   menus.value = configStore.getProjects().map((it, index) => {
     return {
-      name: it,
-      index: `/echarts?project=${it}`,
+      // @ts-ignore
+      name: it.name,
+      // @ts-ignore
+      unread: it.unread,
+      // @ts-ignore
+      index: `/echarts?project=${it.name}`,
+      // @ts-ignore
+      total: it.total,
+      // @ts-ignore
+      desc: `${it.name} (${it.total})`,
     };
   });
 };
 
-let intervalId = null;
+let intervalId: any = null;
 
 onMounted(async () => {
   await fetchConfig();
 
   // 设置定时器，例如每 5 分钟执行一次
-  intervalId = setInterval(fetchConfig, 3000); // 每隔3s刷新一次项目
+  intervalId = setInterval(fetchConfig, 1500); // 每隔3s刷新一次项目列表
 
   // 如果当前路由不在menus中，则跳转到第一个menu
   if (!menus.value.some((menu) => route.path === menu.index)) {
@@ -48,7 +66,7 @@ onUnmounted(() => {
 
 <template>
   <el-container style="width: 100vw; height: 100vh">
-    <el-aside width="200px" style="height: 100%; border-right: 1px solid #ccc">
+    <el-aside width="250px" style="height: 100%; border-right: 1px solid #ccc">
       <div
         style="padding: 10px; border-bottom: 1px solid #ccc; text-align: center"
       >
@@ -68,7 +86,13 @@ onUnmounted(() => {
           :route="menu.index"
           :key="menu.index"
         >
-          {{ menu.name }}
+          <template #title>
+            <el-tooltip :content="menu.desc" placement="right">
+              <span>
+                {{ menu.desc }}
+              </span>
+            </el-tooltip>
+          </template>
         </el-menu-item>
       </el-menu>
       <div v-else style="padding: 10px; text-align: center">
@@ -81,3 +105,10 @@ onUnmounted(() => {
     </el-main>
   </el-container>
 </template>
+
+<style scoped>
+.badge {
+  margin-top: 12px;
+  margin-right: 12px;
+}
+</style>

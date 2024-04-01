@@ -21,7 +21,7 @@ const currentProject = computed(() => props.project);
 const configStore = useConfigStore();
 const isPaused = ref(false);
 const currentTree = ref({});
-let intervalId = null;
+let intervalId: any = null;
 const drawerOpen = ref(false);
 const selectedId = ref("");
 const selectedData = computed(() => {
@@ -48,6 +48,7 @@ const selectedCode = computed(() => {
 
 const onDrawerClose = () => {
   // 关闭抽屉时取消 ECharts 中的选中状态
+  // @ts-ignore
   chart.value.dispatchAction({
     type: "unselect",
     seriesIndex: 0,
@@ -58,6 +59,7 @@ const onDrawerClose = () => {
 
 onMounted(async () => {
   await nextTick();
+  // @ts-ignore
   chart.value = echarts.init(chartDiv.value);
   await fetchOption();
   await fetchData();
@@ -66,8 +68,9 @@ onMounted(async () => {
   intervalId = setInterval(() => {
     fetchData();
   }, (configStore.getUpdateInterval() || 1) * 1000);
-
+  // @ts-ignore
   chart.value.on("selectchanged", "series", (params) => {
+    // @ts-ignore
     const chartOption = chart.value.getOption();
     const selectedMap = chartOption.series[0].selectedMap;
     if (params.selected.length > 0) {
@@ -99,6 +102,7 @@ const getMyTool1Option = () => {
     icon: `image://${isPaused.value ? playIcon : pauseIcon}`,
     onclick: () => {
       isPaused.value = !isPaused.value;
+      // @ts-ignore
       chart.value.setOption(
         {
           toolbox: {
@@ -136,6 +140,7 @@ const getToolboxOption = () => {
         icon: `image://${isPaused.value ? playIcon : pauseIcon}`,
         onclick: () => {
           isPaused.value = !isPaused.value;
+          // @ts-ignore
           chart.value.setOption(
             {
               toolbox: getToolboxOption(),
@@ -168,7 +173,7 @@ const downloadXML = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
     ElMessage.error(e.message);
   }
@@ -193,21 +198,22 @@ const fetchOption = async () => {
     option.toolbox.feature.myTool1 = getMyTool1Option();
     option.toolbox.feature.myTool2 = getMyTool2Option();
     // option.toolbox = getToolboxOption();
-    option.tooltip.formatter = (params) => {
+    option.tooltip.formatter = (params: any) => {
       let code = Prism.highlight(params.value, Prism.languages.yaml, "yaml");
       return "<pre>" + code + "</pre>";
     };
-    option.series[0].label.formatter = (params) => {
+    option.series[0].label.formatter = (params: any) => {
       return params.data.label;
     };
+    // @ts-ignore
     chart.value.setOption(option);
-  } catch (e) {
+  } catch (e: any) {
     console.error(e);
     ElMessage.error(e.message);
   }
 };
 
-const fetchTree = async (track_id) => {
+const fetchTree = async (track_id: any) => {
   try {
     const response = await fetch(
       `/api/get_echarts_data?project=${currentProject.value}&id=${track_id}`
@@ -222,6 +228,7 @@ const fetchTree = async (track_id) => {
       return;
     }
     currentTree.value = result["tree"];
+    // @ts-ignore
     chart.value.setOption(
       {
         series: [
@@ -236,16 +243,21 @@ const fetchTree = async (track_id) => {
       },
       false
     );
-  } catch (e) {
-    console.error(e);
-    ElMessage.error(e.message);
+  } catch (e: any) {
+    if (track_id != "1") {
+      fetchTree("1"); // 重试
+    } else {
+      console.error(e);
+      ElMessage.error(e.message);
+    }
   }
 };
 
 // 定义一个函数来递归搜索节点
-function findNodeByDataIndex(data, dataId) {
+function findNodeByDataIndex(data: any, dataId: any): any {
   if (Array.isArray(data)) {
     for (let i = 0; i < data.length; i++) {
+      // @ts-ignore
       const result = findNodeByDataIndex(data[i], dataId);
       if (result) return result;
     }
@@ -289,6 +301,7 @@ const copySelectedCode = () => {
 const handleCurrentChange = (val: number) => {
   console.log(`current page: ${val}`);
   isPaused.value = true;
+  // @ts-ignore
   chart.value.setOption(
     {
       toolbox: getToolboxOption(),
