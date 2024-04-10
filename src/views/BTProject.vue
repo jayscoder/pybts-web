@@ -7,7 +7,7 @@ import { useConfigStore } from "@/stores/config";
 import pauseIcon from "@/assets/pause.png";
 import playIcon from "@/assets/play.png";
 import xmlIcon from "@/assets/xml.png";
-
+import infoIcon from "@/assets/info.png";
 // import Prism Editor
 import Prism from "prismjs";
 import "prismjs/components/prism-yaml";
@@ -20,12 +20,16 @@ const currentPage = ref(1);
 const currentProject = computed(() => props.project);
 const configStore = useConfigStore();
 const isPaused = ref(false);
-const currentTree = ref({});
+const currentResult = ref({
+  tree: {},
+  title: "",
+  subtitle: "",
+});
 let intervalId: any = null;
 const drawerOpen = ref(false);
 const selectedId = ref("");
 const selectedData = computed(() => {
-  return findNodeByDataIndex(currentTree.value, selectedId.value);
+  return findNodeByDataIndex(currentResult.value["tree"], selectedId.value);
 });
 
 const selectedTitle = computed(() => {
@@ -95,6 +99,17 @@ onUnmounted(() => {
   }
 });
 
+// 路由改变时
+watch(
+  () => props.project,
+  async (newVal, oldVal) => {
+    if (newVal !== oldVal) {
+      currentPage.value = 1;
+      await fetchData();
+    }
+  }
+);
+
 const getMyTool1Option = () => {
   return {
     show: true,
@@ -128,36 +143,26 @@ const getMyTool2Option = () => {
   };
 };
 
-const getToolboxOption = () => {
+const showInfoDrawer = ref(false);
+
+const infoCode = computed(() => {
+  if (!currentResult.value || !currentResult.value["subtitle"]) {
+    return "";
+  }
+  return Prism.highlight(
+    currentResult.value["subtitle"],
+    Prism.languages.yaml,
+    "yaml"
+  );
+});
+
+const getMyTool3Option = () => {
   return {
     show: true,
-    itemSize: 30,
-    itemGap: 16,
-    feature: {
-      myTool1: {
-        show: true,
-        title: isPaused.value ? "播放" : "暂停",
-        icon: `image://${isPaused.value ? playIcon : pauseIcon}`,
-        onclick: () => {
-          isPaused.value = !isPaused.value;
-          // @ts-ignore
-          chart.value.setOption(
-            {
-              toolbox: getToolboxOption(),
-            },
-            false
-          );
-        },
-      },
-      myTool2: {
-        show: true,
-        title: "下载XML",
-        icon: `image://${xmlIcon}`,
-        onclick: () => {
-          downloadXML();
-        },
-      },
-      saveAsImage: {},
+    title: "展示信息",
+    icon: `image://${infoIcon}`,
+    onclick: () => {
+      showInfoDrawer.value = !showInfoDrawer.value;
     },
   };
 };
@@ -197,7 +202,7 @@ const fetchOption = async () => {
     const option = await response.json();
     option.toolbox.feature.myTool1 = getMyTool1Option();
     option.toolbox.feature.myTool2 = getMyTool2Option();
-    // option.toolbox = getToolboxOption();
+    option.toolbox.feature.myTool3 = getMyTool3Option();
     option.tooltip.formatter = (params: any) => {
       let code = Prism.highlight(params.value, Prism.languages.yaml, "yaml");
       return "<pre>" + code + "</pre>";
@@ -224,10 +229,10 @@ const fetchTree = async (track_id: any) => {
     const result = await response.json();
     totalPages.value = result["total"];
     currentPage.value = result["page"];
-    if (JSON.stringify(result["tree"]) === JSON.stringify(currentTree.value)) {
+    if (JSON.stringify(result) === JSON.stringify(currentResult.value)) {
       return;
     }
-    currentTree.value = result["tree"];
+    currentResult.value = result;
     // @ts-ignore
     chart.value.setOption(
       {
@@ -272,11 +277,11 @@ function findNodeByDataIndex(data: any, dataId: any): any {
   return null;
 }
 
-const copySelectedCode = () => {
+const copyCode = (code: string) => {
   // 使用浏览器的 Clipboard API 来复制内容
   if (navigator.clipboard) {
     navigator.clipboard
-      .writeText(selectedData.value["value"])
+      .writeText(code)
       .then(() => {
         console.log("内容已复制");
         ElMessage.success("内容已复制");
@@ -288,7 +293,7 @@ const copySelectedCode = () => {
   } else {
     // 旧版浏览器的复制方法
     const textarea = document.createElement("textarea");
-    textarea.value = selectedData.value["value"];
+    textarea.value = code;
     document.body.appendChild(textarea);
     textarea.select();
     document.execCommand("copy");
@@ -304,7 +309,11 @@ const handleCurrentChange = (val: number) => {
   // @ts-ignore
   chart.value.setOption(
     {
-      toolbox: getToolboxOption(),
+      toolbox: {
+        feature: {
+          myTool1: getMyTool1Option(),
+        },
+      },
     },
     false
   );
@@ -327,6 +336,18 @@ const handleCurrentChange = (val: number) => {
     >
     </el-pagination>
     <el-drawer
+      v-model="showInfoDrawer"
+      :title="currentResult.title"
+      direction="rtl"
+      size="35%"
+      @close="showInfoDrawer = false"
+    >
+      <pre
+        @dblclick="copyCode(infoCode)"
+      ><code class="language-yaml" v-html="infoCode"></code></pre>
+    </el-drawer>
+
+    <el-drawer
       v-model="drawerOpen"
       :title="selectedTitle"
       direction="rtl"
@@ -334,7 +355,7 @@ const handleCurrentChange = (val: number) => {
       @close="onDrawerClose"
     >
       <pre
-        @dblclick="copySelectedCode"
+        @dblclick="copyCode(selectedCode)"
       ><code class="language-yaml" v-html="selectedCode"></code></pre>
     </el-drawer>
   </div>

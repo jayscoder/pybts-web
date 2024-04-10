@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import HomeView from "../views/HomeView.vue";
-import EChartsProject from "@/views/EChartsProject.vue";
+import BTProject from "@/views/BTProject.vue";
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -11,9 +11,9 @@ const router = createRouter({
       component: HomeView,
       children: [
         {
-          path: "echarts",
-          name: "EChartsProject",
-          component: EChartsProject,
+          path: "bt",
+          name: "BTProject",
+          component: BTProject,
           props: (route) => ({ project: route.query.project }),
         },
       ],
